@@ -443,7 +443,7 @@
 		global $CONFIG, $SESSION;
 		$result = $returnvalue;
 		
-		$setting_name = "plugin:settings:socialink:twitter_in";
+		$setting_name = "plugin:user_setting:socialink:twitter_in";
 		$setting_value = "yes";
 		
 		$options = array(
@@ -471,10 +471,16 @@
 						try {
 							$url = "statuses/user_timeline";
 							$params = array(
-								"since_id" => $since_id,
+								/*"since_id" => $since_id, - we first assume that the user hasn't synched with Twitter before*/
 								"include_rts" => true,
-								"count" => 200
+								"count" => 20
 							);
+							//print_r($since_id);
+							if (!empty($since_id)) {
+								// User has synched with Twitter before
+								$params["since_id"] = $since_id;
+								$params["count"] = 200;
+							}
 							
 							$response = $api->get($url, $params);
 							
@@ -494,7 +500,7 @@
 									$text = elgg_substr(strip_tags($tweet->text), 0, 160);
 									
 									if(empty($filter) || stristr($text, $filter)){
-										$post = new ElggObject();
+										/*$post = new ElggObject();
 										$post->subtype = "thewire";
 										$post->owner_guid = $user->getGUID();
 										$post->container_guid = $user->getGUID();
@@ -504,14 +510,19 @@
 										$post->description = $text;
 										
 										$post->method = "Twitter";
-										$post->parent = 0;
-										
-										if($post->save()){
+										$post->parent = 0;*/
+										$guid = thewire_save_post($text, $user->getGUID(), $access_id, 0, "Twitter"); // using thewire's own save function to also update the river
+										if ($guid !== false) {
+										//if($post->save()){
 											if($created = strtotime($tweet->created_at)){
 												
-												$sql = "UPDATE " . $CONFIG->dbprefix . "entities SET time_created = " . $created . ", time_updated = " . $created . " WHERE guid = " . $post->getGUID();
+												$sql = "UPDATE " . $CONFIG->dbprefix . "entities SET time_created = " . $created . ", time_updated = " . $created . " WHERE guid = " . $guid;
 												
 												update_data($sql);
+												
+												$sql2 = "UPDATE " . $CONFIG->dbprefix . "river SET posted = " . $created . " WHERE object_guid = " . $guid;
+												
+												update_data($sql2);
 											}
 										}
 									}
