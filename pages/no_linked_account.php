@@ -20,7 +20,6 @@
 		
 		// draw page
 		echo elgg_view_page($title_text, $page_data);
-		die();
 	} else {
 		forward();
 	}
